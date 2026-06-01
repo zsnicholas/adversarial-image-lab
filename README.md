@@ -5,6 +5,7 @@
 ## 项目亮点
 
 - 使用 `SimpleCNN` 完成 MNIST 手写数字分类。
+- 使用 `CIFAR10DeepCNN` 完成 CIFAR-10 彩色图像分类评估。
 - 实现 FGSM 一步梯度符号攻击。
 - 实现 PGD 多步迭代投影攻击。
 - 支持 Clean Acc、Robust Acc、Attack Success Rate 三类指标评估。
@@ -18,9 +19,12 @@ adversarial_image_lab/
 |-- attacks/
 |   |-- fgsm.py
 |   `-- pgd.py
+|-- checkpoints/
+|   `-- best_cifar10_deep_cnn.pth
 |-- eval/
 |   `-- metrics.py
 |-- models/
+|   |-- cifar_deep_cnn.py
 |   `-- simple_cnn.py
 |-- results/
 |   |-- fgsm_eps_0.3_example.png
@@ -28,6 +32,8 @@ adversarial_image_lab/
 |-- utils/
 |   `-- visualize.py
 |-- evaluate_attack.py
+|-- evaluate_cifar_attack.py
+|-- plot_attack_curve.py
 |-- requirements.txt
 |-- train.py
 |-- visualize_attack.py
@@ -68,6 +74,18 @@ fc2:      [64, 10]
 ```
 
 其中 `1568 = 32 x 7 x 7`，最终输出的 `10` 对应 MNIST 的 10 个数字类别。
+
+## CIFAR10DeepCNN 模型
+
+模型文件位于 `models/cifar_deep_cnn.py`，权重文件位于 `checkpoints/best_cifar10_deep_cnn.pth`,此权重模型由我另一个项目cnn_image_classification_lab而来。
+
+该模型用于 CIFAR-10 彩色图像分类，输入为三通道图片，尺寸为 `32 x 32`。模型由三组卷积块组成，每组包含卷积、BatchNorm、ReLU 和池化层，最后通过全连接分类器输出 10 个类别。
+
+CIFAR-10 类别包括：
+
+```text
+airplane, automobile, bird, cat, deer, dog, frog, horse, ship, truck
+```
 
 ## FGSM 原理
 
@@ -173,6 +191,30 @@ results/attack_curve_compare.png
 - FGSM 的 `epsilon` 从 `0.1` 增大到 `0.3` 时，`Robust Acc` 从 `84.08%` 降到 `6.67%`。
 - PGD 在 `epsilon=0.3`、`alpha=0.01`、`steps=40` 下使 `Robust Acc` 降到 `0.00%`，攻击强度明显高于 FGSM。
 
+## CIFAR-10 运行结果
+
+以下结果由 `evaluate_cifar_attack.py` 实际运行得到，使用权重文件 `checkpoints/best_cifar10_deep_cnn.pth`。
+
+运行命令：
+
+```bash
+python evaluate_cifar_attack.py --attack none
+python evaluate_cifar_attack.py --attack fgsm --epsilon 0.03
+python evaluate_cifar_attack.py --attack pgd --epsilon 0.03 --alpha 0.005 --steps 20
+```
+
+| Model | Attack | Epsilon | Alpha | Steps | Clean Acc | Robust Acc | Attack Success Rate |
+|---|---|---:|---:|---:|---:|---:|---:|
+| CIFAR10DeepCNN | None | 0 | - | - | 85.33% | 85.33% | 0.00% |
+| CIFAR10DeepCNN | FGSM | 0.03 | 0.005 | 20 | 85.33% | 4.87% | 94.33% |
+| CIFAR10DeepCNN | PGD | 0.03 | 0.005 | 20 | 85.33% | 0.00% | 100.00% |
+
+结果说明：
+
+- CIFAR-10 干净准确率为 `85.33%`。
+- FGSM 在 `epsilon=0.03` 下将 `Robust Acc` 降到 `4.87%`。
+- PGD 在 `epsilon=0.03`、`alpha=0.005`、`steps=20` 下将 `Robust Acc` 降到 `0.00%`，攻击成功率达到 `100.00%`。
+
 ## 对抗样本可视化
 
 可视化脚本：
@@ -226,6 +268,24 @@ python evaluate_attack.py --attack fgsm --epsilon 0.3 --model-path simple_cnn_mn
 
 ```bash
 python evaluate_attack.py --attack pgd --epsilon 0.3 --alpha 0.01 --steps 40 --model-path simple_cnn_mnist.pth
+```
+
+运行 CIFAR-10 干净准确率：
+
+```bash
+python evaluate_cifar_attack.py --attack none
+```
+
+运行 CIFAR-10 FGSM：
+
+```bash
+python evaluate_cifar_attack.py --attack fgsm --epsilon 0.03
+```
+
+运行 CIFAR-10 PGD：
+
+```bash
+python evaluate_cifar_attack.py --attack pgd --epsilon 0.03 --alpha 0.005 --steps 20
 ```
 
 生成对抗样本图片：
