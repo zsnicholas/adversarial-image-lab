@@ -3,7 +3,6 @@ import torch
 
 
 def show_adversarial_example(original_image, adv_image, save_path=None, show=True):
-    """Show original image, amplified perturbation, and adversarial image."""
     original_image = original_image.detach().cpu()
     adv_image = adv_image.detach().cpu()
 
