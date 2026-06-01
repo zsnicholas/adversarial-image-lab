@@ -12,6 +12,7 @@
 - 实现 FGSM 和 PGD 两种经典白盒对抗攻击。
 - 记录 Clean Acc、Robust Acc、Attack Success Rate 三类评估指标。
 - 提供攻击强度曲线，直观展示 `epsilon` 对鲁棒性的影响。
+- 加入 FGSM 对抗训练，对比标准训练和对抗训练后的鲁棒性变化。
 - 展示 MNIST 与 CIFAR-10 对抗样本，包含原图、扰动和攻击后图片。
 - README 中结果来自项目脚本实际运行，没有伪造新指标。
 
@@ -21,30 +22,35 @@
 adversarial_image_lab/
 |-- attacks/
 |   |-- fgsm.py
-|   `-- pgd.py
+|   |-- pgd.py
 |-- checkpoints/
-|   `-- best_cifar10_deep_cnn.pth
+|   |-- adv_simple_cnn_mnist.pth
+|   |-- best_cifar10_deep_cnn.pth
 |-- eval/
-|   `-- metrics.py
+|   |-- metrics.py
 |-- models/
 |   |-- cifar_deep_cnn.py
-|   `-- simple_cnn.py
+|   |-- simple_cnn.py
 |-- results/
+|   |-- adv_training_comparison.png
 |   |-- attack_curve_compare.png
+|   |-- adv_training_comparison.csv
 |   |-- cifar_fgsm_eps_0.03_example.png
 |   |-- cifar_pgd_eps_0.03_example.png
 |   |-- fgsm_eps_0.3_example.png
-|   `-- pgd_eps_0.3_example.png
+|   |-- pgd_eps_0.3_example.png
 |-- utils/
-|   `-- visualize.py
+|   |-- visualize.py
 |-- evaluate_attack.py
 |-- evaluate_cifar_attack.py
+|-- plot_adv_training_comparison.py
 |-- plot_attack_curve.py
 |-- requirements.txt
 |-- train.py
+|-- train_adv_mnist.py
 |-- visualize_attack.py
 |-- visualize_cifar_attack.py
-`-- README.md
+|-- README.md
 ```
 
 ## 环境安装
@@ -69,6 +75,12 @@ numpy
 
 ```bash
 python train.py --epochs 3
+```
+
+训练 MNIST FGSM 对抗训练模型：
+
+```bash
+python train_adv_mnist.py --epochs 5 --epsilon 0.3
 ```
 
 评估 MNIST 干净准确率：
@@ -126,6 +138,12 @@ python visualize_cifar_attack.py --attack pgd --epsilon 0.03 --alpha 0.005 --ste
 python plot_attack_curve.py --model-path simple_cnn_mnist.pth
 ```
 
+生成对抗训练对比图：
+
+```bash
+python plot_adv_training_comparison.py
+```
+
 ## MNIST 结果
 
 MNIST 使用 `SimpleCNN`，模型权重为 `simple_cnn_mnist.pth`。以下结果来自脚本实际运行。
@@ -137,6 +155,33 @@ MNIST 使用 `SimpleCNN`，模型权重为 `simple_cnn_mnist.pth`。以下结果
 | SimpleCNN | FGSM | 0.2 | - | 1 | 98.71% | 33.54% | 66.02% |
 | SimpleCNN | FGSM | 0.3 | - | 1 | 98.71% | 6.67% | 93.24% |
 | SimpleCNN | PGD | 0.3 | 0.01 | 40 | 98.71% | 0.00% | 100.00% |
+
+## MNIST 对抗训练结果
+
+对抗训练使用 `train_adv_mnist.py`，训练命令如下：
+
+```bash
+python train_adv_mnist.py --epochs 5 --epsilon 0.3
+```
+
+训练完成后生成权重：
+
+```text
+checkpoints/adv_simple_cnn_mnist.pth
+```
+
+本次训练中，最佳 Clean Test Acc 为 `95.16%`。随后使用 `evaluate_attack.py` 对该权重进行评估，结果如下：
+
+| Model | Training Method | Clean Acc | FGSM Robust Acc | PGD Robust Acc |
+|---|---|---:|---:|---:|
+| SimpleCNN | Standard | 98.71% | 6.67% | 0.00% |
+| SimpleCNN | FGSM Adv Training | 92.32% | 86.71% | 0.00% |
+
+对比图如下：
+
+![MNIST adversarial training comparison](results/adv_training_comparison.png)
+
+可以看到，FGSM 对抗训练显著提高了模型在 FGSM 攻击下的鲁棒准确率，从 `6.67%` 提升到 `86.71%`。同时，干净准确率从 `98.71%` 降到 `92.32%`，说明对抗训练会带来一定的 clean accuracy 代价。PGD Robust Acc 仍为 `0.00%`，说明仅使用 FGSM 对抗训练还不足以抵抗更强的多步 PGD 攻击。
 
 ## CIFAR-10 结果
 
@@ -213,6 +258,7 @@ ASR 是 Attack Success Rate，即攻击成功率。一般情况下，Robust Acc 
 - MNIST 上，SimpleCNN 的 Clean Acc 为 `98.71%`，正常分类能力较好。
 - MNIST 上，FGSM 的 `epsilon` 从 `0.1` 增大到 `0.3` 时，Robust Acc 从 `84.08%` 降到 `6.67%`，说明扰动越大攻击越强。
 - MNIST 上，PGD 在 `epsilon=0.3` 时将 Robust Acc 降到 `0.00%`，攻击强度高于 FGSM。
+- MNIST 上，FGSM 对抗训练将 FGSM Robust Acc 从 `6.67%` 提升到 `86.71%`，但 PGD Robust Acc 仍为 `0.00%`。
 - CIFAR-10 上，CIFAR10DeepCNN 的 Clean Acc 为 `85.33%`，但 FGSM 在 `epsilon=0.03` 下就能将 Robust Acc 降到 `4.87%`。
 - CIFAR-10 自然图像模型也容易受到小扰动攻击；PGD 在当前参数下将 Robust Acc 降到 `0.00%`，ASR 达到 `100.00%`。
 
