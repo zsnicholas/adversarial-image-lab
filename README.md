@@ -144,6 +144,29 @@ python evaluate_attack.py --attack pgd --epsilon 0.3 --alpha 0.01 --steps 40 --m
 | SimpleCNN | FGSM | 0.3 | - | 1 | 98.71% | 6.67% | 93.33% |
 | SimpleCNN | PGD | 0.3 | 0.01 | 40 | 98.71% | 0.00% | 100.00% |
 
+## 攻击曲线
+
+批量评估脚本：
+
+```bash
+python plot_attack_curve.py --model-path simple_cnn_mnist.pth
+```
+
+该脚本会在多个 `epsilon` 取值下分别运行 FGSM 和 PGD，并生成结果文件：
+
+```text
+results/attack_results.csv
+results/attack_curve_compare.png
+```
+
+攻击曲线如下：
+
+![FGSM and PGD attack curves](results/attack_curve_compare.png)
+
+左图展示 `epsilon` 与 `Robust Acc` 的关系。随着 `epsilon` 增大，FGSM 和 PGD 的鲁棒准确率都明显下降，其中 PGD 下降更快，说明多步攻击更容易找到有效扰动。
+
+右图展示 `epsilon` 与 `Attack Success Rate` 的关系。扰动范围越大，攻击成功率越高；当 `epsilon=0.3` 时，PGD 的攻击成功率达到 `100.00%`。
+
 结果说明：
 
 - 干净样本准确率为 `98.71%`，说明模型在正常 MNIST 测试集上表现较好。
